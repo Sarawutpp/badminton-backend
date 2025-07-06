@@ -8,6 +8,7 @@ exports.createSession = async (req, res) => {
   try {
     const {
       playersPresent,
+      zone, // --- [NEW] ---
       paymentType,
       fixedCostPerPerson,
       costPerGameBreakdown,
@@ -19,9 +20,13 @@ exports.createSession = async (req, res) => {
         .status(400)
         .send({ message: 'At least one player must be present.' });
     }
+    if (!zone) { // --- [NEW] ---
+      return res.status(400).send({ message: 'Zone is required.' });
+    }
 
     const newSession = new Session({
       playersPresent,
+      zone, // --- [NEW] ---
       paymentType,
       fixedCostPerPerson: fixedCostPerPerson || 0,
       notes: notes || '',
@@ -56,31 +61,7 @@ exports.createSession = async (req, res) => {
   }
 };
 
-// ดึงข้อมูล Session ทั้งหมด
-exports.getSessions = async (req, res) => {
-  try {
-    const sessions = await Session.find().populate('playersPresent').sort({ date: -1 });
-    res.status(200).send(sessions);
-  } catch (error) {
-    res.status(500).send({ message: 'Error fetching sessions', error: error.message });
-  }
-};
-
-// ดึงข้อมูล Session เดียวตาม ID
-exports.getSessionById = async (req, res) => {
-  try {
-    const session = await Session.findById(req.params.id).populate('playersPresent');
-    if (!session) {
-      return res.status(404).send({ message: 'Session not found' });
-    }
-    res.status(200).send(session);
-  } catch (error) {
-    res.status(500).send({ message: 'Error fetching session', error: error.message });
-  }
-};
-
-
-// --- *** [MODIFIED] แก้ไขฟังก์ชันอัปเดต Session *** ---
+// อัปเดต Session
 exports.updateSession = async (req, res) => {
   try {
     const { 
@@ -90,7 +71,9 @@ exports.updateSession = async (req, res) => {
         notes, 
         paymentType, 
         fixedCostPerPerson, 
-        costPerGameBreakdown 
+        costPerGameBreakdown,
+        buddyPairs, // --- [NEW] ---
+        zone, // --- [NEW] ---
     } = req.body;
 
     const session = await Session.findById(req.params.id);
@@ -98,20 +81,15 @@ exports.updateSession = async (req, res) => {
       return res.status(404).send({ message: 'Session not found' });
     }
 
-    // อัปเดตข้อมูลตาม field ที่ส่งมา
     if (playersPresent !== undefined) session.playersPresent = playersPresent;
     if (gamesPlayed !== undefined) session.gamesPlayed = gamesPlayed;
     if (notes !== undefined) session.notes = notes;
     if (paymentType !== undefined) session.paymentType = paymentType;
     if (fixedCostPerPerson !== undefined) session.fixedCostPerPerson = fixedCostPerPerson;
     if (costPerGameBreakdown !== undefined) session.costPerGameBreakdown = costPerGameBreakdown;
-    
-    // --- *** [REVERTED] นำ Logic การลบผู้เล่นออกจาก playersPresent ออก *** ---
-    // อัปเดตสถานะการจ่ายเงินเท่านั้น โดยไม่แก้ไข playersPresent
-    if (playerCosts !== undefined) {
-      session.playerCosts = playerCosts;
-    }
-    // --- ****************************************************** ---
+    if (playerCosts !== undefined) session.playerCosts = playerCosts;
+    if (buddyPairs !== undefined) session.buddyPairs = buddyPairs; // --- [NEW] ---
+    if (zone !== undefined) session.zone = zone; // --- [NEW] ---
 
     const updatedSession = await session.save();
     const populatedSession = await Session.findById(updatedSession._id).populate('playersPresent');
@@ -124,7 +102,26 @@ exports.updateSession = async (req, res) => {
 };
 
 
-// ลบ Session
+// --- (Other functions like getSessions, deleteSession, etc. remain the same) ---
+exports.getSessions = async (req, res) => {
+  try {
+    const sessions = await Session.find().populate('playersPresent').sort({ date: -1 });
+    res.status(200).send(sessions);
+  } catch (error) {
+    res.status(500).send({ message: 'Error fetching sessions', error: error.message });
+  }
+};
+exports.getSessionById = async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id).populate('playersPresent');
+    if (!session) {
+      return res.status(404).send({ message: 'Session not found' });
+    }
+    res.status(200).send(session);
+  } catch (error) {
+    res.status(500).send({ message: 'Error fetching session', error: error.message });
+  }
+};
 exports.deleteSession = async (req, res) => {
   try {
     const session = await Session.findByIdAndDelete(req.params.id);

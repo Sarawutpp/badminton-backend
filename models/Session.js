@@ -5,45 +5,46 @@ const mongoose = require('mongoose');
 const GameSchema = new mongoose.Schema({
   players: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Player' }],
   gameNumber: { type: Number, required: true },
-  // --- เพิ่ม Field ใหม่สำหรับสถานะ Match ---
-  status: { // 'planned', 'active', 'completed', 'cancelled'
+  status: { 
     type: String,
     enum: ['planned', 'active', 'completed', 'cancelled'],
-    default: 'planned', // ค่าเริ่มต้นคือ 'planned' (จัดล่วงหน้า)
+    default: 'planned',
   },
-  startTime: { type: Date }, // เวลาที่ Match เริ่มจริง
-  endTime: { type: Date },   // เวลาที่ Match จบจริง
-  // --- สิ้นสุด Field ใหม่ ---
-}, { _id: false }); // ไม่สร้าง _id ให้แต่ละเกมย่อย
+  startTime: { type: Date },
+  endTime: { type: Date },
+  courtNumber: { type: Number }, // Added courtNumber to track where the game is played
+}, { _id: false });
 
 const SessionSchema = new mongoose.Schema({
   date: {
     type: Date,
     default: Date.now,
   },
-  playersPresent: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Player' }], // ผู้เล่นที่มาใน Session นี้
-  gamesPlayed: [GameSchema], // รายละเอียดเกมที่เล่นไป (ตอนนี้รวมสถานะ Match)
-  totalCost: { // ค่าใช้จ่ายรวม (อาจใช้หรือไม่ใช้ขึ้นอยู่กับ paymentType)
-    type: Number,
-    default: 0,
+  // --- [NEW] Add zone field ---
+  zone: {
+    type: String,
+    required: true,
+    enum: ['บางนา', 'ลาดพร้าว'],
   },
-  paymentType: { // 'fixed_per_person' หรือ 'per_game'
+  playersPresent: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Player' }],
+  gamesPlayed: [GameSchema],
+  paymentType: { 
     type: String,
     enum: ['fixed_per_person', 'per_game'],
-    default: 'fixed_per_person', // ค่าเริ่มต้น
+    default: 'fixed_per_person',
   },
-  fixedCostPerPerson: { // สำหรับแบบเหมาจ่ายต่อคน
+  fixedCostPerPerson: {
     type: Number,
     default: 0,
   },
-  costPerGameBreakdown: { // สำหรับแบบคิดต่อเกม
+  costPerGameBreakdown: {
     courtCost: { type: Number, default: 0 },
     shuttlecockCostPerGame: { type: Number, default: 0 },
   },
   playerCosts: {
     type: Map,
     of: {
-      amountOwed: { type: Number, default: 0 },
+      cost: { type: Number, default: 0 },
       isPaid: { type: Boolean, default: false },
     },
     default: {},
@@ -51,6 +52,12 @@ const SessionSchema = new mongoose.Schema({
   notes: {
     type: String,
     default: '',
+  },
+  // --- [NEW] Add buddyPairs field ---
+  buddyPairs: {
+    type: Map,
+    of: String, // Key: player_id, Value: buddy_id
+    default: {},
   },
   createdAt: {
     type: Date,

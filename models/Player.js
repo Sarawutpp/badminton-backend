@@ -11,28 +11,32 @@ const PlayerSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
-  skillLevel: { // ใช้ skillLevel ใน Backend (สามารถ mapping จาก skill ใน Frontend)
+  skillLevel: { 
     type: Number,
     required: true,
   },
-  // --- เพิ่ม Field ใหม่ ---
-  gamesPlayed: { // จำนวนเกมที่เล่นแล้ว
+  // --- [NEW] Add zone field ---
+  zone: {
+    type: String,
+    required: true,
+    enum: ['บางนา', 'ลาดพร้าว'], // Restrict to predefined zones
+  },
+  gamesPlayed: { 
     type: Number,
     default: 0,
   },
-  availableFrom: { // เวลาเริ่มเล่นได้ (HH:mm)
+  availableFrom: { 
     type: String,
     default: '00:00',
   },
-  availableTo: { // เวลาสิ้นสุดการเล่น (HH:mm)
+  availableTo: { 
     type: String,
     default: '23:59',
   },
-  pastPartners: [{ // รายชื่อผู้เล่นที่เคยเล่นด้วย (IDs)
+  pastPartners: [{ 
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Player'
   }],
-  // --- สิ้นสุด Field ใหม่ ---
   createdAt: {
     type: Date,
     default: Date.now,
