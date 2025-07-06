@@ -12,7 +12,7 @@ const GameSchema = new mongoose.Schema({
   },
   startTime: { type: Date },
   endTime: { type: Date },
-  courtNumber: { type: Number }, // Added courtNumber to track where the game is played
+  courtLabel: { type: String }, // --- [MODIFIED] Changed from courtNumber to courtLabel (String)
 }, { _id: false });
 
 const SessionSchema = new mongoose.Schema({
@@ -20,11 +20,15 @@ const SessionSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  // --- [NEW] Add zone field ---
   zone: {
     type: String,
     required: true,
     enum: ['บางนา', 'ลาดพร้าว'],
+  },
+  // --- [NEW] Add courtLabels field ---
+  courtLabels: {
+    type: [String],
+    default: ['1', '2', '3', '4', '5', '6'], // Default court labels
   },
   playersPresent: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Player' }],
   gamesPlayed: [GameSchema],
@@ -53,10 +57,9 @@ const SessionSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
-  // --- [NEW] Add buddyPairs field ---
   buddyPairs: {
     type: Map,
-    of: String, // Key: player_id, Value: buddy_id
+    of: String,
     default: {},
   },
   createdAt: {

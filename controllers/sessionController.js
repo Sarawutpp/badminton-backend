@@ -1,18 +1,18 @@
 // badminton_backend/controllers/sessionController.js
 
 const Session = require('../models/Session');
-const Player = require('../models/Player');
 
 // สร้าง Session
 exports.createSession = async (req, res) => {
   try {
     const {
       playersPresent,
-      zone, // --- [NEW] ---
+      zone,
       paymentType,
       fixedCostPerPerson,
       costPerGameBreakdown,
       notes,
+      courtLabels, // --- [NEW] ---
     } = req.body;
 
     if (!Array.isArray(playersPresent) || playersPresent.length === 0) {
@@ -20,16 +20,17 @@ exports.createSession = async (req, res) => {
         .status(400)
         .send({ message: 'At least one player must be present.' });
     }
-    if (!zone) { // --- [NEW] ---
+    if (!zone) {
       return res.status(400).send({ message: 'Zone is required.' });
     }
 
     const newSession = new Session({
       playersPresent,
-      zone, // --- [NEW] ---
+      zone,
       paymentType,
       fixedCostPerPerson: fixedCostPerPerson || 0,
       notes: notes || '',
+      courtLabels: courtLabels && courtLabels.length > 0 ? courtLabels : ['1','2','3','4','5','6'], // --- [NEW] ---
       costPerGameBreakdown: {
         courtCost: costPerGameBreakdown?.courtCost || 0,
         shuttlecockCostPerGame:
@@ -72,8 +73,9 @@ exports.updateSession = async (req, res) => {
         paymentType, 
         fixedCostPerPerson, 
         costPerGameBreakdown,
-        buddyPairs, // --- [NEW] ---
-        zone, // --- [NEW] ---
+        buddyPairs,
+        zone,
+        courtLabels, // --- [NEW] ---
     } = req.body;
 
     const session = await Session.findById(req.params.id);
@@ -81,6 +83,7 @@ exports.updateSession = async (req, res) => {
       return res.status(404).send({ message: 'Session not found' });
     }
 
+    // อัปเดตข้อมูลตาม field ที่ส่งมา
     if (playersPresent !== undefined) session.playersPresent = playersPresent;
     if (gamesPlayed !== undefined) session.gamesPlayed = gamesPlayed;
     if (notes !== undefined) session.notes = notes;
@@ -88,8 +91,9 @@ exports.updateSession = async (req, res) => {
     if (fixedCostPerPerson !== undefined) session.fixedCostPerPerson = fixedCostPerPerson;
     if (costPerGameBreakdown !== undefined) session.costPerGameBreakdown = costPerGameBreakdown;
     if (playerCosts !== undefined) session.playerCosts = playerCosts;
-    if (buddyPairs !== undefined) session.buddyPairs = buddyPairs; // --- [NEW] ---
-    if (zone !== undefined) session.zone = zone; // --- [NEW] ---
+    if (buddyPairs !== undefined) session.buddyPairs = buddyPairs;
+    if (zone !== undefined) session.zone = zone;
+    if (courtLabels !== undefined) session.courtLabels = courtLabels; // --- [NEW] ---
 
     const updatedSession = await session.save();
     const populatedSession = await Session.findById(updatedSession._id).populate('playersPresent');
