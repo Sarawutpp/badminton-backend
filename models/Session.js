@@ -1,5 +1,3 @@
-// badminton_backend/models/Session.js
-
 const mongoose = require('mongoose');
 
 const GameSchema = new mongoose.Schema({
@@ -12,8 +10,23 @@ const GameSchema = new mongoose.Schema({
   },
   startTime: { type: Date },
   endTime: { type: Date },
-  courtLabel: { type: String }, // --- [MODIFIED] Changed from courtNumber to courtLabel (String)
+  courtLabel: { type: String },
 }, { _id: false });
+
+// --- [NEW] Schema for individual activity logs ---
+const ActivityLogSchema = new mongoose.Schema({
+  playerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Player', required: true },
+  status: {
+    type: String,
+    enum: ['WAITING', 'PLAYING'],
+    required: true,
+  },
+  timestamp: {
+    type: Date,
+    required: true,
+  },
+}, { _id: false });
+
 
 const SessionSchema = new mongoose.Schema({
   date: {
@@ -25,13 +38,14 @@ const SessionSchema = new mongoose.Schema({
     required: true,
     enum: ['บางนา', 'ลาดพร้าว'],
   },
-  // --- [NEW] Add courtLabels field ---
   courtLabels: {
     type: [String],
-    default: ['1', '2', '3', '4', '5', '6'], // Default court labels
+    default: ['1', '2', '3', '4', '5', '6'],
   },
   playersPresent: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Player' }],
   gamesPlayed: [GameSchema],
+  // --- [NEW] Add activityLogs array to the session ---
+  activityLogs: [ActivityLogSchema],
   paymentType: { 
     type: String,
     enum: ['fixed_per_person', 'per_game'],

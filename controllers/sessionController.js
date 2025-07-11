@@ -1,21 +1,19 @@
-// badminton_backend/controllers/sessionController.js
-
 const Session = require('../models/Session');
 
 // สร้าง Session
 exports.createSession = async (req, res) => {
   try {
     const {
-      playersPresent,
+      playerIds, // Changed from playersPresent for clarity
       zone,
       paymentType,
       fixedCostPerPerson,
       costPerGameBreakdown,
       notes,
-      courtLabels, // --- [NEW] ---
+      courtLabels,
     } = req.body;
 
-    if (!Array.isArray(playersPresent) || playersPresent.length === 0) {
+    if (!Array.isArray(playerIds) || playerIds.length === 0) {
       return res
         .status(400)
         .send({ message: 'At least one player must be present.' });
@@ -24,20 +22,30 @@ exports.createSession = async (req, res) => {
       return res.status(400).send({ message: 'Zone is required.' });
     }
 
+    // --- [NEW] Create initial activity logs for all players ---
+    const now = new Date();
+    const initialActivityLogs = playerIds.map(id => ({
+      playerId: id,
+      status: 'WAITING',
+      timestamp: now,
+    }));
+
     const newSession = new Session({
-      playersPresent,
+      playersPresent: playerIds,
       zone,
       paymentType,
       fixedCostPerPerson: fixedCostPerPerson || 0,
       notes: notes || '',
-      courtLabels: courtLabels && courtLabels.length > 0 ? courtLabels : ['1','2','3','4','5','6'], // --- [NEW] ---
+      courtLabels: courtLabels && courtLabels.length > 0 ? courtLabels : ['1','2','3','4','5','6'],
       costPerGameBreakdown: {
         courtCost: costPerGameBreakdown?.courtCost || 0,
         shuttlecockCostPerGame:
           costPerGameBreakdown?.shuttlecockCostPerGame || 0,
       },
       gamesPlayed: [],
-      playerCosts: playersPresent.reduce((acc, playerId) => {
+      // --- [NEW] Add initial logs to the new session ---
+      activityLogs: initialActivityLogs,
+      playerCosts: playerIds.reduce((acc, playerId) => {
         acc[playerId] = { cost: 0, isPaid: false };
         return acc;
       }, {}),
@@ -50,10 +58,7 @@ exports.createSession = async (req, res) => {
 
     res
       .status(201)
-      .send({
-        message: 'Session created successfully!',
-        session: populatedSession,
-      });
+      .send(populatedSession); // Return the full session object
   } catch (error) {
     console.error('Error creating session:', error);
     res
@@ -75,7 +80,8 @@ exports.updateSession = async (req, res) => {
         costPerGameBreakdown,
         buddyPairs,
         zone,
-        courtLabels, // --- [NEW] ---
+        courtLabels,
+        activityLogs, // --- [NEW] Receive activityLogs from client ---
     } = req.body;
 
     const session = await Session.findById(req.params.id);
@@ -93,12 +99,14 @@ exports.updateSession = async (req, res) => {
     if (playerCosts !== undefined) session.playerCosts = playerCosts;
     if (buddyPairs !== undefined) session.buddyPairs = buddyPairs;
     if (zone !== undefined) session.zone = zone;
-    if (courtLabels !== undefined) session.courtLabels = courtLabels; // --- [NEW] ---
+    if (courtLabels !== undefined) session.courtLabels = courtLabels;
+    // --- [NEW] Update activityLogs if provided ---
+    if (activityLogs !== undefined) session.activityLogs = activityLogs;
 
     const updatedSession = await session.save();
     const populatedSession = await Session.findById(updatedSession._id).populate('playersPresent');
 
-    res.status(200).send({ message: 'Session updated successfully!', session: populatedSession });
+    res.status(200).send(populatedSession); // Return the full updated session
   } catch (error) {
     console.error("Error updating session:", error);
     res.status(500).send({ message: 'Error updating session', error: error.message });
